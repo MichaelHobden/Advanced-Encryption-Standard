@@ -1,4 +1,5 @@
 import os
+import math
 
 sbox = [[0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76],
         [0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0,
@@ -36,6 +37,10 @@ RCON = [0x00000000, 0x01000000, 0x02000000,
         0x20000000, 0x40000000, 0x80000000,
         0x1b000000, 0x36000000]
 
+'''
+Code for key expansion
+'''
+
 
 def generate_key():
     '''
@@ -51,8 +56,27 @@ def key_expansion(key):
     '''
     w = [()]*44
 
-    for i in range(8):
+    for i in range(4):
         w[i] = key[i*4:(i+1)*4]
+
+    for i in range(4, 44):
+        prev = w[i-1]
+
+        if i % 4 == 0:
+            prev = Rotword_Function(prev)
+            prev = Subword_Function(prev)
+
+            rcon = RCON[i // 4]
+            prev_int = int(''.join(prev), 16)
+            prev_int ^= rcon
+
+        prev_int ^= int(''.join(w[i-4]), 16)
+
+        prev_hex = format(prev_int, '08x')
+
+        prev_list = [prev_hex[j:j+2] for j in range(0, len(prev_hex), 2)]
+
+        w[i] = prev_list
 
     return w
 
@@ -91,22 +115,35 @@ def Subword_Function(word):
     return word
 
 
-def XORing_Function(word1, word2):
-    word1 = convert_to_binary(word1)
-    word2 = convert_to_binary(word2)
+def add_padding(plaintext, block_size=16):
+    pad_length = block_size - (len(plaintext) % block_size)
+    padding = bytes([pad_length] * pad_length)
+    return plaintext + padding
 
-    output = []
-    for i in range(len(word1)):
-        xor = []
-        c1, c2 = word1[i], word2[i]
-        c1 = [b for b in c1]
-        c2 = [b for b in c2]
-        print(c1, c2)
-        for x in range(len(c1)):
-            xor.append(c1[x] == c2[x])
-        output.append(''.join(['1' if bin else '0' for bin in xor]))
-    return binary_to_hex(output)
+
+def convert_text_to_blocks(text):
+    text = text.encode('utf-8')
+    text = add_padding(text)
+    return [text[x*16:(x+1)*16] for x in range(len(text)//16)]
+
+
+def sub_bytes(block):
+    for i in range(4):
+        for j in range(4):
+            block[i][j] = sbox[block[i][j]]
+    return block
+
+
+def encrypt_text(text, key):
+    key_list = key_expansion(key)
+    blocked_text = convert_text_to_blocks(text)
+
+    print(blocked_text)
 
 
 key = ["0f", "15", "71", "c9", "47", "d9", "e8", "59",
        "0c", "b7", "ad", "d6", "af", "7f", "67", "98"]
+
+text = 'michael is super cool and this aes-256 encryption is going to work'
+
+encrypt_text(text, key)
