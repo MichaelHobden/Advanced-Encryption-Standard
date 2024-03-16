@@ -152,67 +152,91 @@ def shift_rows(block):
     return b
 
 
-def multiply_galois(a, b):
-    a = bin(a)[2:].zfill(8)
-    b = bin(int(b, 16))[2:].zfill(8)
+# def multiply_galois(a, b):
+#     a = bin(a)[2:].zfill(8)
+#     b = bin(int(b, 16))[2:].zfill(8)
 
-    result = 0
+#     result = 0
 
-    for i in range(8):
-        if (int(b, 2) & 1) == 1:
-            result ^= int(a, 2)
-        hi_bit_set = int(a, 2) & 0x80
-        a = bin((int(a, 2) << 1) & 0xFF)[2:].zfill(8)
-        if hi_bit_set == 0x80:
-            a = bin(int(a, 2) ^ 0x1B)[2:].zfill(8)
-        b = bin(int(b, 2) >> 1)[2:].zfill(8)
+#     for i in range(8):
+#         print(f"{i} iteration: {bin(result)}")
+#         if (int(b, 2) & 1) == 1:
+#             result ^= int(a, 2)
+#         hi_bit_set = int(a, 2) & 0x80
+#         a = bin((int(a, 2) << 1) & 0xFF)[2:].zfill(8)
+#         if hi_bit_set == 0x80:
+#             a = bin(int(a, 2) ^ 0x1B)[2:].zfill(8)
+#         b = bin(int(b, 2) >> 1)[2:].zfill(8)
 
-    # Convert the result back to hexadecimal
-    return hex(result)
+#     return hex(result)
 
 
-print(multiply_galois(0x1B, 'B5'))
+# print(multiply_galois(0x1B, 'B5'))
+
+
+# def mix_columns(block):
+#     for i in range(4):
+#         s0 = block[0][i]
+#         s1 = block[1][i]
+#         s2 = block[2][i]
+#         s3 = block[3][i]
+
+#         # transformation matrix
+#         '''
+#         02, 03, 01, 01
+#         01, 02, 03, 01
+#         01, 01, 02, 03
+#         03, 01, 01, 02
+#         '''
+
+#         s0_mult_02 = multiply_galois(0x02, s0)
+#         s1_mult_03 = multiply_galois(0x03, s1)
+#         s1_mult_02 = multiply_galois(0x02, s1)
+#         s2_mult_03 = multiply_galois(0x03, s2)
+#         s2_mult_02 = multiply_galois(0x02, s2)
+#         s3_mult_03 = multiply_galois(0x03, s3)
+#         s0_mult_03 = multiply_galois(0x03, s0)
+#         s3_mult_02 = multiply_galois(0x02, s3)
+#         s2_mult_01 = s2
+#         s3_mult_01 = s3
+#         s1_mult_01 = s1
+#         s0_mult_01 = s0
+
+#         block[0][i] = hex(int(s0_mult_02, 16) ^ int(
+#             s1_mult_03, 16) ^ int(s2_mult_01, 16) ^ int(s3_mult_01, 16))[2:]
+#         block[1][i] = hex(int(s0_mult_01, 16) ^ int(
+#             s1_mult_02, 16) ^ int(s2_mult_03, 16) ^ int(s3_mult_01, 16))[2:]
+#         block[2][i] = hex(int(s0_mult_01, 16) ^ int(
+#             s1_mult_01, 16) ^ int(s2_mult_02, 16) ^ int(s3_mult_03, 16))[2:]
+#         block[3][i] = hex(int(s0_mult_03, 16) ^ int(
+#             s1_mult_01, 16) ^ int(s2_mult_01, 16) ^ int(s3_mult_02, 16))[2:]
+
+#         print(block)
+
+#     return block
+
+# this code is a modified version of boppreh function to performt he galois multiplication,  who took it from somewhere else. original source not known,  link: https://github.com/boppreh/aes/blob/master/aes.py
+def xtime(a): return (((a << 1) ^ 0x1B) & 0xFF) if (a & 0x80) else (a << 1)
+
+
+def mix_single_column(a):
+
+    t = int(a[0], 16) ^ int(a[1], 16) ^ int(a[2], 16) ^ int(a[3], 16)
+    u = int(a[0], 16)
+
+    a0, a1, a2, a3 = int(a[0], 16), int(a[1], 16), int(a[2], 16), int(a[3], 16)
+
+    a0 ^= t ^ xtime(int(a[0], 16) ^ int(a[1], 16))
+    a1 ^= t ^ xtime(int(a[1], 16) ^ int(a[2], 16))
+    a2 ^= t ^ xtime(int(a[2], 16) ^ int(a[3], 16))
+    a3 ^= t ^ xtime(int(a[3], 16) ^ u)
+
+    return [hex(a0)[2:], hex(a1)[2:], hex(a2)[2:], hex(a3)[2:]]
 
 
 def mix_columns(block):
     for i in range(4):
-        s0 = block[0][i]
-        s1 = block[1][i]
-        s2 = block[2][i]
-        s3 = block[3][i]
-
-        # transformation matrix
-        '''
-        02, 03, 01, 01
-        01, 02, 03, 01
-        01, 01, 02, 03
-        03, 01, 01, 02
-        '''
-
-        s0_mult_02 = multiply_galois(0x02, s0)
-        s1_mult_03 = multiply_galois(0x03, s1)
-        s1_mult_02 = multiply_galois(0x02, s1)
-        s2_mult_03 = multiply_galois(0x03, s2)
-        s2_mult_02 = multiply_galois(0x02, s2)
-        s3_mult_03 = multiply_galois(0x03, s3)
-        s0_mult_03 = multiply_galois(0x03, s0)
-        s3_mult_02 = multiply_galois(0x02, s3)
-        s2_mult_01 = s2
-        s3_mult_01 = s3
-        s1_mult_01 = s1
-        s0_mult_01 = s0
-
-        block[0][i] = hex(int(s0_mult_02, 16) ^ int(
-            s1_mult_03, 16) ^ int(s2_mult_01, 16) ^ int(s3_mult_01, 16))[2:]
-        block[1][i] = hex(int(s0_mult_01, 16) ^ int(
-            s1_mult_02, 16) ^ int(s2_mult_03, 16) ^ int(s3_mult_01, 16))[2:]
-        block[2][i] = hex(int(s0_mult_01, 16) ^ int(
-            s1_mult_01, 16) ^ int(s2_mult_02, 16) ^ int(s3_mult_03, 16))[2:]
-        block[3][i] = hex(int(s0_mult_03, 16) ^ int(
-            s1_mult_01, 16) ^ int(s2_mult_01, 16) ^ int(s3_mult_02, 16))[2:]
-
-        print(block)
-
+        block[i] = mix_single_column(block[i])
     return block
 
 
@@ -246,7 +270,23 @@ def encrypt_text(text, key):
         blocked_text = [sub_bytes(block) for block in blocked_text]
         blocked_text = [shift_rows(block) for block in blocked_text]
         blocked_text = [mix_columns(block) for block in blocked_text]
-    # main rounds
+        blocked_text = add_round_key(blocked_text, key)
+    # final round
+
+    key = key_list[-1]
+    blocked_text = [sub_bytes(block) for block in blocked_text]
+    blocked_text = [shift_rows(block) for block in blocked_text]
+    blocked_text = add_round_key(blocked_text, key)
+
+    # format data
+    encrypted_string = []
+    for block in blocked_text:
+        block_text = []
+        for row in block:
+            block_text.append(''.join(row))
+        encrypted_string.append(''.join(block_text))
+
+    return ''.join(encrypted_string)
 
 
 key = ["0f", "15", "71", "c9", "47", "d9", "e8", "59",
@@ -254,4 +294,4 @@ key = ["0f", "15", "71", "c9", "47", "d9", "e8", "59",
 
 text = 'michael is super cool and this aes-256 encryption is going to work'
 
-# encrypt_text(text, key)
+encrypt_text(text, key)
